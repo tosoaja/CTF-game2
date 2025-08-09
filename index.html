@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>CTF Game — Matrix Edition</title>
+<style>
+  /* BASIC STYLES */
+  :root {
+    --neon: #00ffcc;
+    --bg: #010204;
+    --panel-bg: rgba(0, 0, 0, 0.6);
+    --glass-border: rgba(0, 255, 204, 0.12);
+    --success: #7cff7c;
+    --error: #ff7b7b;
+    --hint: rgba(0, 255, 204, 0.35);
+  }
+  
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+  
+  html, body {
+    height: 100%;
+    margin: 0;
+    background: var(--bg);
+    font-family: 'Courier New', monospace;
+    color: var(--neon);
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+  
+  /* MATRIX CANVAS */
+  canvas {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+  }
+  
+  /* CENTERING */
+  .wrap {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  
+  /* CARD */
+  .card {
+    width: 100%;
+    max-width: 720px;
+    background: var(--panel-bg);
+    border-radius: 14px;
+    padding: 24px;
+    border: 1px solid var(--glass-border);
+    box-shadow: 0 8px 40px rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(6px);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+  }
+  
+  .card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 12px 50px rgba(0, 255, 204, 0.2);
+  }
+  
+  h1 {
+    margin: 10px 0 15px;
+    font-size: 1.6rem;
+    text-align: center;
+    text-shadow: 0 0 10px rgba(0, 255, 204, 0.7);
+  }
+  
+  .muted {
+    color: rgba(160, 255, 230, 0.4);
+    margin: 8px 0;
+    font-size: 0.95rem;
+    text-align: center;
+    line-height: 1.5;
+  }
+  
+  /* INPUTS */
+  .input-group {
+    margin: 15px 0;
+  }
+  
+  input[type="text"], 
+  input[type="password"], 
+  textarea {
+    width: 100%;
+    padding: 12px 15px;
+    border-radius: 8px;
+    border: 1px solid rgba(0, 255, 204, 0.2);
+    background: rgba(0, 0, 0, 0.45);
+    color: var(--neon);
+    font-family: monospace;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+    outline: none;
+  }
+  
+  input:focus, textarea:focus {
+    border-color: var(--neon);
+    box-shadow: 0 0 10px rgba(0, 255, 204, 0.3);
+  }
+  
+  button {
+    background: var(--neon);
+    color: #001;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: 'Courier New', monospace;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+  }
+  
+  button:hover {
+    background: #00e6b8;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.4);
+  }
+  
+  .muted-small {
+    color: var(--hint);
+    font-size: 0.9rem;
+  }
+  
+  .level-box {
+    margin-top: 20px;
+    padding: 20px;
+    border-radius: 10px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(0, 255, 204, 0.1);
+    box-shadow: inset 0 0 15px rgba(0, 0, 0, 0.5);
+  }
+  
+  .feedback {
+    margin-top: 15px;
+    font-weight: 700;
+    font-size: 1.05rem;
+    padding: 10px;
+    border-radius: 6px;
+    text-align: center;
+  }
+  
+  .success {
+    color: var(--success);
+    background: rgba(0, 40, 0, 0.3);
+  }
+  
+  .error {
+    color: var(--error);
+    background: rgba(40, 0, 0, 0.3);
+  }
+  
+  .hint {
+    margin-top: 12px;
+    color: var(--hint);
+    font-size: 0.95rem;
+    padding: 10px;
+    border-left: 3px solid var(--neon);
+    background: rgba(0, 20, 15, 0.3);
+    border-radius: 0 6px 6px 0;
+  }
+  
+  .controls {
+    display: flex;
+    gap: 12px;
+    margin-top: 20px;
+    flex-wrap: wrap;
+  }
+  
+  .small-btn {
+    padding: 10px 14px;
+    font-size: 0.9rem;
+    background: rgba(0, 255, 204, 0.2);
+    color: var(--neon);
+  }
+  
+  .small-btn:hover {
+    background: rgba(0, 255, 204, 0.3);
+  }
+  
+  .hidden {
+    display: none;
+  }
+  
+  pre {
+    white-space: pre-wrap;
+    margin: 12px 0;
+    color: var(--neon);
+    background: rgba(0, 0, 0, 0.3);
+    padding: 12px;
+    border-radius: 6px;
+    font-family: monospace;
+    line-height: 1.5;
+    border: 1px solid rgba(0, 255, 204, 0.1);
+  }
+  
+  .progress-bar {
+    height: 8px;
+    background: rgba(0, 255, 204, 0.1);
+    border-radius: 4px;
+    margin: 12px 0;
+    overflow: hidden;
+  }
+  
+  .progress-fill {
+    height: 100%;
+    background: var(--neon);
+    border-radius: 4px;
+    width: 0%;
+    transition: width 0.5s ease;
+  }
+  
+  .progress-text {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.9rem;
+    color: var(--hint);
+  }
+  
+  /* Animations */
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  
+  .card {
+    animation: fadeIn 0.5s ease-out;
+  }
+  
+  /* Responsive */
+  @media (max-width: 768px) {
+    .card {
+      padding: 18px;
+    }
+    
+    h1 {
+      font-size: 1.4rem;
+    }
+    
+    .controls {
+      flex-direction: column;
+      gap: 8px;
+    }
+    
+    button, .small-btn {
+      width: 100%;
+    }
+  }
+  
+  @media (max-width: 480px) {
+    .wrap {
+      padding: 12px;
+    }
+    
+    .card {
+      padding: 15px;
+    }
+    
+    h1 {
+      font-size: 1.3rem;
+    }
+    
+    input, button {
+      padding: 10px 12px;
+    }
+    
+    .level-box {
+      padding: 15px;
+    }
+  }
+</style>
+</head>
+<body>
+<canvas id="matrixCanvas"></canvas>
+
+<div class="wrap">
+  <div class="card" id="loginCard">
+    <h1>🔐 CTF Login</h1>
+    <p class="muted">Masuk untuk memulai — username: <b>CTF</b>, password: <b>login</b></p>
+    <div style="max-width: 500px; margin: 20px auto;">
+      <div class="input-group">
+        <input id="username" placeholder="Username" autocomplete="off" />
+      </div>
+      <div class="input-group">
+        <input id="password" type="password" placeholder="Password" autocomplete="off" />
+      </div>
+      <div class="controls">
+        <button onclick="doLogin()">Login</button>
+        <button class="small-btn" onclick="resetProgress()">Reset Progress</button>
+      </div>
+      <p id="loginMsg" class="feedback error" style="display: none;"></p>
+    </div>
+  </div>
+
+  <div class="card hidden" id="gameCard">
+    <h1>🚩 CTF Game — Matrix Edition</h1>
+    <p class="muted">Selesaikan tiap level secara berurutan. Progress tersimpan di browser (localStorage).</p>
+
+    <div class="level-box">
+      <h2 id="levelTitle">Level 1</h2>
+      <pre id="question"></pre>
+
+      <div class="input-group">
+        <input id="answerInput" placeholder="Masukkan flag (format CTF{...})" />
+      </div>
+      
+      <div class="controls">
+        <button onclick="submitAnswer()">Submit</button>
+        <button class="small-btn" onclick="showHint()">Tampilkan Hint</button>
+        <button class="small-btn" onclick="logout()">Logout</button>
+      </div>
+
+      <p id="feedback" class="feedback"></p>
+      <p id="hint" class="hint"></p>
+      
+      <div class="progress-bar">
+        <div id="progressFill" class="progress-fill"></div>
+      </div>
+      <div class="progress-text">
+        <span>Progress:</span>
+        <span id="progressText">0 / 10</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card hidden" id="finishCard">
+    <h1>🎉 Semua level selesai!</h1>
+    <p class="muted">Kamu berhasil menyelesaikan semua tantangan. Flag final:</p>
+    <pre style="text-align: center; font-weight: 700; margin: 20px auto;">CTF{final_master}</pre>
+    <div class="controls" style="justify-content: center;">
+      <button onclick="resetProgress()">Main lagi (Reset Progress)</button>
+      <button onclick="logout()">Logout</button>
+    </div>
+  </div>
+</div>
+
+<!-- Hidden comment for level 5 -->
+<!-- FLAG_LEVEL5: CTF{inspect_here} -->
+
+<script>
+/* ===== MATRIX RAIN (responsive) ===== */
+const canvas = document.getElementById('matrixCanvas');
+const ctx = canvas.getContext('2d');
+let fontSize = 14;
+let columns = 0;
+let drops = [];
+let animationId;
+
+function resizeCanvas() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  fontSize = Math.max(12, Math.floor(window.innerWidth / 90));
+  columns = Math.floor(canvas.width / fontSize);
+  drops = Array(columns).fill(1);
+}
+
+function drawMatrix() {
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.06)';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  
+  ctx.fillStyle = '#00ffcc';
+  ctx.font = `${fontSize}px monospace`;
+  
+  for (let i = 0; i < drops.length; i++) {
+    const text = Math.random() > 0.98 ? String.fromCharCode(0x30A0 + Math.random() * 96) : '';
+    ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+    
+    if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+      drops[i] = 0;
+    }
+    drops[i]++;
+  }
+  
+  animationId = requestAnimationFrame(drawMatrix);
+}
+
+function initMatrix() {
+  resizeCanvas();
+  drawMatrix();
+}
+
+window.addEventListener('resize', () => {
+  cancelAnimationFrame(animationId);
+  resizeCanvas();
+  drawMatrix();
+});
+
+/* ===== GAME DATA (10 LEVELS) ===== */
+const levels = [
+  /* 1 */ {
+    q: `Level 1 — Base64\n\nDekode Base64:\nQ1RGe2Jhc2U2NF9tYXN0ZXJ9\n\n(Dekode → flag)`,
+    a: "CTF{base64_master}",
+    hint: "Gunakan atob('Q1RGe2...') di console atau Base64 decoder."
+  },
+  /* 2 */ {
+    q: `Level 2 — Caesar cipher (shift +3)\n\nCiphertext:\nFWI{fdhvdu_vkliw}\n\nLakukan shift -3 pada huruf untuk mendapatkan flag.`,
+    a: "CTF{caesar_shift}",
+    hint: "Shift setiap huruf 3 posisi ke belakang (A<-D)."
+  },
+  /* 3 */ {
+    q: `Level 3 — Binary → ASCII\n\nBinary:\n01000011 01010100 01000110 01111011 01100010 01101001 01101110 01100001 01110010 01111001 01011111 01100110 01110101 01101110 01111101\n\nKonversi tiap 8-bit ke karakter ASCII.`,
+    a: "CTF{binary_fun}",
+    hint: "Gunakan converter 'binary to text' atau parse di console."
+  },
+  /* 4 */ {
+    q: `Level 4 — Hex → ASCII\n\nHex:\n4354467b6865785f6d61737465727d\n\nUbah hex ke teks.`,
+    a: "CTF{hex_master}",
+    hint: "Gunakan hex->ascii converter atau console parseInt(...,16)."
+  },
+  /* 5 */ {
+    q: `Level 5 — Inspect / View Source\n\nFlag level ini disembunyikan di komentar HTML halaman ini.\nCari comment yang berisi FLAG_LEVEL5.`,
+    a: "CTF{inspect_here}",
+    hint: "Di Chrome desktop: View → Developer → View Source. Di Android: 'View page source'."
+  },
+  /* 6 */ {
+    q: `Level 6 — JavaScript parts (cek console/page source)\n\nFlag dibentuk dari array 'secretParts' dalam source JS. Temukan dan gabungkan untuk flag.`,
+    a: "CTF{js_var}",
+    hint: "Buka view-source, cari 'secretParts' atau lihat console."
+  },
+  /* 7 */ {
+    q: `Level 7 — Reverse string\n\nString terbalik:\n}em_esrever{FTC\n\nBalikkan urutan karakter untuk mendapatkan flag.`,
+    a: "CTF{reverse_me}",
+    hint: "Gunakan .split('').reverse().join('') di console."
+  },
+  /* 8 */ {
+    q: `Level 8 — URL percent-encoding\n\nTeks:\nCTF%7Burl_decode%7D\n\nDecode URL encoding → flag.`,
+    a: "CTF{url_decode}",
+    hint: "Gunakan decodeURIComponent('CTF%7B...%7D') di console atau tool URL decoder."
+  },
+  /* 9 */ {
+    q: `Level 9 — Matematika (Fibonacci)\n\nBerapakah bilangan Fibonacci ke-10 (dengan urutan dimulai 1,1,2,3,...)?\nFormat flag: CTF{fib_<angka>} (contoh: CTF{fib_55})`,
+    a: "CTF{fib_55}",
+    hint: "Urutan: 1,1,2,3,5,8,13,21,34,55 → ke-10 = 55."
+  },
+  /* 10 */ {
+    q: `Level 10 — Kombinasi: Base64 → ROT13\n\nBerikan langkah:\n1) Decode Base64 string berikut:\nUEdTe3N2YW55X3puZmdyZX0=\n2) Hasilnya terenkripsi ROT13 — terapkan ROT13 → itu adalah flag final.`,
+    a: "CTF{final_master}",
+    hint: "Di console: atob('UEdT...') lalu terapkan ROT13 (cada/huruf shift 13)."
+  }
+];
+
+/* hidden in JS for level 6 - visible if user views source */
+var secretParts = ['CTF','{','js_var','}']; // level6: secretParts.join('')
+
+/* PLACEHOLDERS / ELEMENTS */
+const loginCard = document.getElementById('loginCard');
+const gameCard = document.getElementById('gameCard');
+const finishCard = document.getElementById('finishCard');
+const levelTitle = document.getElementById('levelTitle');
+const questionEl = document.getElementById('question');
+const answerInput = document.getElementById('answerInput');
+const feedbackEl = document.getElementById('feedback');
+const hintEl = document.getElementById('hint');
+const progressText = document.getElementById('progressText');
+const progressFill = document.getElementById('progressFill');
+const loginMsg = document.getElementById('loginMsg');
+
+/* STATE: saved in localStorage so user can resume */
+const STORAGE_KEY = 'ctf_progress_v2';
+let progress = { unlockedLevel: 0, loggedIn: false };
+
+/* Initialize from storage */
+function loadProgress() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const p = JSON.parse(raw);
+      if (typeof p.unlockedLevel === 'number') {
+        progress = p;
+      }
+    }
+  } catch (e) {
+    console.warn('Error loading progress:', e);
+  }
+}
+
+function saveProgress() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(progress));
+  } catch (e) {
+    console.warn('Error saving progress:', e);
+  }
+}
+
+function updateProgressBar() {
+  const percent = (progress.unlockedLevel / levels.length) * 100;
+  progressFill.style.width = `${percent}%`;
+}
+
+/* AUTH / LOGIN */
+function doLogin() {
+  const u = document.getElementById('username').value.trim();
+  const p = document.getElementById('password').value.trim();
+  
+  if (u === 'CTF' && p === 'login') {
+    progress.loggedIn = true;
+    saveProgress();
+    showGame();
+    loginMsg.style.display = 'none';
+  } else {
+    loginMsg.textContent = 'Username atau password salah!';
+    loginMsg.style.display = 'block';
+  }
+}
+
+function logout() {
+  progress.loggedIn = false;
+  saveProgress();
+  showLogin();
+}
+
+/* UI SWITCHES */
+function showLogin() {
+  gameCard.classList.add('hidden');
+  finishCard.classList.add('hidden');
+  loginCard.classList.remove('hidden');
+  document.getElementById('username').value = '';
+  document.getElementById('password').value = '';
+  loginMsg.style.display = 'none';
+}
+
+function showGame() {
+  loginCard.classList.add('hidden');
+  finishCard.classList.add('hidden');
+  gameCard.classList.remove('hidden');
+  
+  if (progress.unlockedLevel >= levels.length) {
+    showFinish();
+  } else {
+    renderLevel(progress.unlockedLevel);
+  }
+}
+
+function showFinish() {
+  loginCard.classList.add('hidden');
+  gameCard.classList.add('hidden');
+  finishCard.classList.remove('hidden');
+}
+
+/* Render a level */
+function renderLevel(i) {
+  const idx = Math.min(i, levels.length - 1);
+  const L = levels[idx];
+  levelTitle.textContent = `Level ${idx + 1}`;
+  questionEl.textContent = L.q;
+  answerInput.value = '';
+  feedbackEl.textContent = '';
+  feedbackEl.className = 'feedback';
+  hintEl.textContent = '';
+  progressText.textContent = `${progress.unlockedLevel + 1} / ${levels.length}`;
+  updateProgressBar();
+  answerInput.focus();
+}
+
+/* Submit answer */
+function submitAnswer() {
+  const val = answerInput.value.trim();
+  const currentIdx = progress.unlockedLevel;
+  const expected = levels[currentIdx].a;
+  
+  if (!val) {
+    feedbackEl.textContent = '❌ Silakan masukkan jawaban!';
+    feedbackEl.className = 'feedback error';
+    return;
+  }
+  
+  if (val === expected) {
+    feedbackEl.textContent = '✅ Benar! Membuka level selanjutnya...';
+    feedbackEl.className = 'feedback success';
+    
+    if (progress.unlockedLevel < levels.length - 1) {
+      progress.unlockedLevel++;
+      saveProgress();
+      setTimeout(() => renderLevel(progress.unlockedLevel), 1200);
+    } else {
+      progress.unlockedLevel = levels.length;
+      saveProgress();
+      setTimeout(showFinish, 1000);
+    }
+  } else {
+    feedbackEl.textContent = '❌ Salah — coba lagi.';
+    feedbackEl.className = 'feedback error';
+  }
+}
+
+/* Hint */
+function showHint() {
+  const idx = progress.unlockedLevel;
+  hintEl.textContent = 'Hint: ' + (levels[idx].hint || 'Tidak ada hint tersedia.');
+}
+
+/* Reset progress (and logout) */
+function resetProgress() {
+  if (confirm('Reset progress dan logout? Semua kemajuan akan dihapus.')) {
+    progress = { unlockedLevel: 0, loggedIn: false };
+    saveProgress();
+    showLogin();
+  }
+}
+
+/* On load: restore progress & auto-show login or game */
+function init() {
+  initMatrix();
+  loadProgress();
+  
+  if (progress.unlockedLevel >= levels.length) {
+    if (progress.loggedIn) {
+      showFinish();
+    } else {
+      showLogin();
+    }
+    return;
+  }
+  
+  if (progress.loggedIn) {
+    showGame();
+  } else {
+    showLogin();
+  }
+  
+  // Console hints
+  console.log("Tip: inspect page source or console for hidden hints (level 5 & 6).");
+  console.log("secretParts (join to get level6 flag):", secretParts);
+  
+  // Enable Enter key submission
+  answerInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') submitAnswer();
+  });
+  
+  // Enable Enter on login inputs
+  document.getElementById('username').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') doLogin();
+  });
+  
+  document.getElementById('password').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') doLogin();
+  });
+}
+
+// Prevent skipping by disallowing direct render beyond unlocked level
+window.renderLevel = function(i) {
+  if (i <= progress.unlockedLevel) renderLevel(i);
+  else alert('Level terkunci. Selesaikan level sebelumnya terlebih dahulu.');
+};
+
+// Initialize the game
+window.onload = init;
+</script>
+</body>
+</html>
